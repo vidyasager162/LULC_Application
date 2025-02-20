@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sentinel-2 Viewer</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+  </head>
+  <body>
+    <h1>Sentinel-2 Tile Viewer</h1>
+    <form id="locationForm">
+      <input type="text" id="address" placeholder="Enter location" required />
+      <button type="submit">Get Tile</button>
+    </form>
+    <div id="tileContainer">
+      <img id="tileImage" src="" alt="Sentinel-2 Tile" />
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </body>
+</html>
