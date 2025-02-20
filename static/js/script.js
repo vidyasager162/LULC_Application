@@ -3,18 +3,20 @@ document
   .addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    const address = document.getElementById("address").value;
-    const response = await fetch("/get_tile", {
+    const location = document.getElementById("location").value;
+    const response = await fetch("/get_latlong", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address: address }),
+      body: JSON.stringify({ location: location }),
     });
 
     const data = await response.json();
-    if (data.tile_url) {
-      document.getElementById("tileImage").src = data.tile_url;
-      document.getElementById("tileImage").style.display = "block";
+    if (data.latitude && data.longitude) {
+      document.getElementById(
+        "result"
+      ).innerText = `Latitude: ${data.latitude}, Longitude: ${data.longitude}`;
     } else {
-      alert("Error fetching tile.");
+      document.getElementById("result").innerText =
+        "Error fetching coordinates.";
     }
   });
