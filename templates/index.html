@@ -19,7 +19,18 @@
   <body>
     <header class="bg-light py-3 shadow-sm fixed-top">
       <div class="container d-flex justify-content-between align-items-center">
-        <a class="navbar-brand" href="#>">Application</a>
+        <h1 class="h4 mb-0">Application</h1>
+        <nav>
+          <ul class="nav">
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('map_view') }}">Map View</a>
+            </li>
+          </ul>
+        </nav>
       </div>
     </header>
     <main class="container my-5 py-5">
