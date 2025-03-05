@@ -26,6 +26,12 @@ document.addEventListener("DOMContentLoaded", function () {
             if (tileData.tile_url) {
               if (!map) {
                 map = L.map("map").setView([latitude, longitude], 15);
+                L.tileLayer(
+                  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                  {
+                    attribution: "&copy; OpenStreetMap contributors",
+                  }
+                ).addTo(map);
               } else {
                 map.setView([latitude, longitude], 15);
               }

@@ -10,8 +10,7 @@ except Exception:
     ee.Authenticate()
     ee.Initialize()
 
-def get_sentinel_tile_url(lat, lon):
-    buffer_size = 0.02
+def get_sentinel_tile_url(lat, lon, buffer_size=0.02):
     try:
         region = ee.Geometry.BBox(lon - buffer_size, lat - buffer_size, lon + buffer_size, lat + buffer_size)
 
@@ -39,6 +38,10 @@ def get_sentinel_tile_url(lat, lon):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/map_view')
+def map_view():
+    return render_template('map_view.html')
 
 @app.route('/get_tile', methods=['POST'])
 def get_tile():
