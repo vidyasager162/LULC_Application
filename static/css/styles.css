@@ -1,11 +1,18 @@
-body {
-  font-family: Arial, sans-serif;
-  text-align: center;
-  margin: 20px;
+html {
+  background-color: #f6f1f1;
+  font-family: Helvetica, sans-serif;
 }
 
 form {
   margin-bottom: 20px;
+}
+
+header {
+  border-bottom: 1px solid #ddd;
+}
+
+footer {
+  border-top: 1px solid #ddd;
 }
 
 input {
@@ -25,4 +32,10 @@ button {
   max-width: 100%;
   height: auto;
   display: none;
+}
+
+#map {
+  height: 500px;
+  width: 100%;
+  margin-top: 20px;
 }
