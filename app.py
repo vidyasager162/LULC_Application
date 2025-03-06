@@ -95,7 +95,7 @@ def get_lulc_overlay(lat, lon, buffer_size=0.02):
             dst.write(lulc_mask, 1)
 
         lulc_png_path = "./static/lulc_overlay.png"
-        plt.imsave(lulc_png_path, lulc_mask, cmap='jet')
+        plt.imsave(lulc_png_path, lulc_mask, cmap='tab10')
 
         return tile_url, lulc_png_path
     
