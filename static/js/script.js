@@ -1,5 +1,6 @@
 let map;
 let tileLayer;
+let lulcLayer;
 
 document.addEventListener("DOMContentLoaded", function () {
   const getLocationBtn = document.getElementById("getLocationBtn");
@@ -11,6 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
         async function (position) {
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
+          const bufferSize = 0.02;
 
           resultText.innerText = `Latitude: ${latitude}, Longitude: ${longitude}`;
 
@@ -36,16 +38,33 @@ document.addEventListener("DOMContentLoaded", function () {
                 map.setView([latitude, longitude], 15);
               }
 
-              map.eachLayer((layer) => {
-                if (layer instanceof L.TileLayer) {
-                  map.removeLayer(layer);
-                }
-              });
+              // Remove existing tile layers
+              if (tileLayer) map.removeLayer(tileLayer);
+              if (lulcLayer) map.removeLayer(lulcLayer);
 
-              L.tileLayer(tileData.tile_url, {
+              // Add Sentinel-2 base tile
+              tileLayer = L.tileLayer(tileData.tile_url, {
                 attribution: "&copy; Google Earth Engine",
                 tileSize: 256,
               }).addTo(map);
+
+              // Add LULC overlay with transparency
+              if (tileData.lulc_overlay) {
+                const southWest = [
+                  latitude - bufferSize,
+                  longitude + bufferSize,
+                ];
+                const northEast = [
+                  latitude + bufferSize,
+                  longitude - bufferSize,
+                ];
+                const imageBounds = [southWest, northEast];
+
+                lulcLayer = L.imageOverlay(tileData.lulc_overlay, imageBounds, {
+                  opacity: 0.6,
+                  interactive: false,
+                }).addTo(map);
+              }
             } else {
               resultText.innerText += "\nError fetching Sentinel-2 tile.";
             }

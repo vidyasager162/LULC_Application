@@ -1,16 +1,47 @@
 from flask import Flask, render_template, request, jsonify
 import requests
 import ee
+import torch
+import numpy as np
+import rasterio
+from rasterio.transform import from_bounds
+import torchvision.transforms as transforms
+from PIL import Image
+from matplotlib import pyplot as plt
+import segmentation_models_pytorch as smp
 
 app = Flask(__name__)
 
 try:
-    ee.Initialize()
+    ee.Initialize(project='ee-vidyasager162')
 except Exception:
     ee.Authenticate()
     ee.Initialize()
 
-def get_sentinel_tile_url(lat, lon, buffer_size=0.02):
+NUM_CLASSES = 9
+MODEL_PATH = "./static/PSPNet_res101_320_74.pt"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+model = smp.PSPNet(
+    encoder_name = 'resnet101',
+    encoder_weights = 'imagenet',
+    classes = NUM_CLASSES,
+    activation = None,
+).to(device)
+
+state_dict = torch.load(MODEL_PATH, map_location=device)
+model.load_state_dict(state_dict)
+model.eval()
+
+def preprocess_sentinel_image(image):
+    transform = transforms.Compose([
+        transforms.Resize((320, 320)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+    return transform(image).unsqueeze(0).to(device)
+
+def get_sentinel_tile(lat, lon, buffer_size=0.02):
     try:
         region = ee.Geometry.BBox(lon - buffer_size, lat - buffer_size, lon + buffer_size, lat + buffer_size)
 
@@ -28,13 +59,50 @@ def get_sentinel_tile_url(lat, lon, buffer_size=0.02):
 
         map_id_dict = collection.getMapId(vis_params)
         tile_url = f"https://earthengine.googleapis.com/v1/{map_id_dict['mapid']}/tiles/{{z}}/{{x}}/{{y}}"
-        return tile_url
+        return tile_url, collection
         
     except Exception as e:
         print("Error fetching Sentinel-2 tile:", str(e))
-        return None
+        return None, None
     
+def classify_sentinel_image(image):
+    with torch.no_grad():
+        output = model(image)
+        predicted = torch.argmax(output, dim=1).squeeze(0).cpu().numpy()
+        return predicted
+    
+def get_lulc_overlay(lat, lon, buffer_size=0.02):
+    try:
+        tile_url, image = get_sentinel_tile(lat, lon, buffer_size)
+        if image is None:
+            return None, None
 
+        url = image.select(['B4', 'B3', 'B2']).getThumbURL({'min': 0, 'max': 3000, 'dimensions': [320, 320]})
+        img = Image.open(requests.get(url, stream=True).raw).convert("RGB")
+        processed_image = preprocess_sentinel_image(img)
+
+        lulc_mask = classify_sentinel_image(processed_image)
+
+        transforms = from_bounds(lon - buffer_size, lat - buffer_size, lon + buffer_size, lat + buffer_size, lulc_mask.shape[1], lulc_mask.shape[0])
+        lulc_path = "./static/lulc_overlay.tif"
+
+        with rasterio.open(
+            lulc_path, 'w', driver='GTiff',
+            height=lulc_mask.shape[0], width=lulc_mask.shape[1],
+            count=1, dtype=lulc_mask.dtype,
+            crs='EPSG:4326', transform=transforms
+        ) as dst:
+            dst.write(lulc_mask, 1)
+
+        lulc_png_path = "./static/lulc_overlay.png"
+        plt.imsave(lulc_png_path, lulc_mask, cmap='jet')
+
+        return tile_url, lulc_png_path
+    
+    except Exception as e:
+        print("Error generating LULC overlay:", str(e))
+        return None, None
+    
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -53,8 +121,8 @@ def get_tile():
         return jsonify({"error": "Invalid coordinates"}), 400
     
     try:
-        tile_url = get_sentinel_tile_url(latitude, longitude)
-        return jsonify({"tile_url": tile_url})
+        tile_url, lulc_overlay = get_lulc_overlay(latitude, longitude)
+        return jsonify({"tile_url": tile_url, "lulc_overlay": lulc_overlay})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
