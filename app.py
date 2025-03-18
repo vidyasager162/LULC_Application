@@ -6,6 +6,7 @@ import numpy as np
 import rasterio
 from rasterio.transform import from_bounds
 import torchvision.transforms as transforms
+import torchvision.io as tvio
 from PIL import Image
 from matplotlib import pyplot as plt
 import segmentation_models_pytorch as smp
@@ -18,7 +19,7 @@ except Exception:
     ee.Authenticate()
     ee.Initialize()
 
-NUM_CLASSES = 9
+NUM_CLASSES = 8
 MODEL_PATH = "./static/PSPNet_res101_320_74.pt"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -51,6 +52,7 @@ def get_sentinel_tile(lat, lon, buffer_size=0.02):
                 .sort('CLOUDY_PIXEL_PERCENTAGE')
                 .first())
         
+        
         vis_params = {
             'bands': ['B4', 'B3', 'B2'],
             'min': 0,
@@ -66,10 +68,9 @@ def get_sentinel_tile(lat, lon, buffer_size=0.02):
         return None, None
     
 def classify_sentinel_image(image):
-    with torch.no_grad():
-        output = model(image)
-        predicted = torch.argmax(output, dim=1).squeeze(0).cpu().numpy()
-        return predicted
+    output = model(image)
+    predicted = torch.argmax(output, dim=1).squeeze(0).cpu().numpy()
+    return predicted
     
 def get_lulc_overlay(lat, lon, buffer_size=0.02):
     try:
@@ -78,9 +79,12 @@ def get_lulc_overlay(lat, lon, buffer_size=0.02):
             return None, None
 
         url = image.select(['B4', 'B3', 'B2']).getThumbURL({'min': 0, 'max': 3000, 'dimensions': [320, 320]})
+        print(url)
         img = Image.open(requests.get(url, stream=True).raw).convert("RGB")
+        img.save("./static/sentinel_image.png")
+        print(img)
         processed_image = preprocess_sentinel_image(img)
-
+        print(processed_image)
         lulc_mask = classify_sentinel_image(processed_image)
 
         transforms = from_bounds(lon - buffer_size, lat - buffer_size, lon + buffer_size, lat + buffer_size, lulc_mask.shape[1], lulc_mask.shape[0])
